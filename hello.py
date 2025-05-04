@@ -32,7 +32,8 @@ def run_server():
                 if data.startswith("hola soy "):
                     nombre = data[9:]  # Extraer el nombre
                     hora_actual = datetime.now().strftime("%H:%M:%S")
-                    respuesta = f"{nombre}, la hora es {hora_actual}"
+                    respuesta = f"{nombre}, la hora es {hora_actual}."
+                                f"Saludo desde mi VPS ({hostname}, {ip_address})"
                     conn.sendall(respuesta.encode('utf-8'))
                     
                     # Guardar el nombre en el log
