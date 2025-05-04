@@ -32,10 +32,13 @@ def run_server():
                 if data.startswith("hola soy "):
                     nombre = data[9:]  # Extraer el nombre
                     hora_actual = datetime.now().strftime("%H:%M:%S")
-                    respuesta = f"Hola {nombre}, la hora es {hora_actual}"
+                    respuesta = f"{nombre}, la hora es {hora_actual}"
                     conn.sendall(respuesta.encode('utf-8'))
+                    
+                    # Guardar el nombre en el log
+                    logging.info(f'Nombre recibido: {nombre}')
                 else:
-                    conn.sendall(b'Mamawebo dime "hola soy {tunombre}"')
+                    conn.sendall(b'Mensaje no reconocido')
 
 if __name__ == "__main__":
     # Ejecutar el servidor en segundo plano
