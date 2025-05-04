@@ -20,6 +20,10 @@ def run_server():
         s.listen()
         logging.info(f'Servidor escuchando en {HOST}:{PORT}')
 
+        # Obtener información del VPS
+        hostname = socket.gethostname()
+        ip_address = socket.gethostbyname(hostname)
+
         while True:
             conn, addr = s.accept()
             with conn:
