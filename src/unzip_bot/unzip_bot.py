@@ -1,7 +1,7 @@
 import os
 import logging
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+from telegram.ext import Updater, CommandHandler, MessageHandler, filters, CallbackContext
 
 load_dotenv()
 
@@ -113,7 +113,7 @@ def main() -> None:
 
     # Handlers
     dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(MessageHandler(Filters.document, handle_compressed_file))
+    dispatcher.add_handler(MessageHandler(filters.document, handle_compressed_file))
 
     # Iniciar el bot
     updater.start_polling()
