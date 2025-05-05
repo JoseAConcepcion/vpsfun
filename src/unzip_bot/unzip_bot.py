@@ -1,5 +1,9 @@
 import os
 import logging
+import rarfile 
+import zipfile
+import tarfile
+import py7zr
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import (
@@ -74,26 +78,42 @@ async def handle_compressed_file(update: Update, context: ContextTypes.DEFAULT_T
     await update.message.reply_text(f"Archivo {file_name} recibido. Descomprimiendo...")
     
     try:
-        # Descomprimir con py7zr
         extract_dir = os.path.join(user_dir, "extracted")
         os.makedirs(extract_dir, exist_ok=True)
         
-        # Usamos py7zr en lugar del binario 7z
-        import py7zr
-        with py7zr.SevenZipFile(file_path, mode='r') as z:
-            z.extractall(extract_dir)
+        # Determinar el tipo de archivo y descomprimir
+        if file_name.lower().endswith('.zip'):
+            with zipfile.ZipFile(file_path, 'r') as z:
+                z.extractall(extract_dir)
         
-        # Enviar archivos descomprimidos
+        elif file_name.lower().endswith('.tar.gz') or file_name.lower().endswith('.tgz'):
+            with tarfile.open(file_path, 'r:gz') as tar:
+                tar.extractall(extract_dir)
+        
+        elif file_name.lower().endswith('.tar.bz2'):
+            with tarfile.open(file_path, 'r:bz2') as tar:
+                tar.extractall(extract_dir)
+        
+        elif file_name.lower().endswith('.7z'):
+            with py7zr.SevenZipFile(file_path, mode='r') as z:
+                z.extractall(extract_dir)
+        
+        elif file_name.lower().endswith('.rar'):
+            with rarfile.RarFile(file_path) as rf:
+                rf.extractall(extract_dir)
+        else:
+            await update.message.reply_text("Formato de archivo no soportado")
+            return
+        
         await send_extracted_files(update, context, extract_dir)
-        
-        await update.message.reply_text("¡Descompresión completada!")
+        await update.message.reply_text("✅ Descompresión completada!")
+    
     except Exception as e:
         logger.error(f"Error al descomprimir: {e}")
-        await update.message.reply_text(f"Error al descomprimir el archivo: {e}")
+        await update.message.reply_text(f"❌ Error al descomprimir: {str(e)}")
+    
     finally:
-        # Limpiar archivos temporales
         clean_temp_files(user_dir)
-
 async def send_extracted_files(update: Update, context: ContextTypes.DEFAULT_TYPE, directory: str):
     """Envía los archivos descomprimidos al usuario"""
     for root, _, files in os.walk(directory):
