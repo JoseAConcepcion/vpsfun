@@ -1,7 +1,48 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "fun"
-version = "0.1.0"
-description = "Add your description here"
+name = "unzip_bot"
+version = "1.0.0"
+description = "Bot de Telegram para descomprimir archivos usando 7z"
+authors = [
+    {name = "Tu Nombre", email = "tu@email.com"},
+]
 readme = "README.md"
-requires-python = ">=3.13"
-dependencies = []
+requires-python = ">=3.8"
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "python-telegram-bot>=20.0",
+    "python-dotenv>=1.0.0",
+    "py7zr>=0.20.0",  # Alternativa a p7zip-full
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=24.0",
+    "flake8>=7.0",
+    "mypy>=1.8",
+    "isort>=5.13",
+    "pytest>=7.0",
+]
+
+[project.scripts]
+unzip-bot = "unzip_bot.unzip_bot:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}  # Especifica que los paquetes están en src/
+packages = ["unzip_bot", "basic_messaging"]  # Paquetes a incluir
+
+[tool.setuptools.package-data]
+"*" = ["*.json", "*.txt"]  # Incluye archivos no-Python en todos los paquetes
+
+[tool.black]
+line-length = 88
+target-version = ["py38"]
