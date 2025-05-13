@@ -264,7 +264,9 @@ def list_files(update: Update, context: CallbackContext) -> None:
                 f"📂 Contenido de {path}:\n"
                 f"📊 Total archivos: {count}\n"
                 f"📦 Tamaño total: {total_size:.2f} MB\n\n"
-                "Archivos:\n" + '\n'.join(files[:20])  # Limitar a 20 archivos
+                "Archivos:\n" + '\n'.join(files[:20]
+                )  # Limitar a 20 archivos
+            )
             
             if len(files) > 20:
                 message += f"\n\n...y {len(files)-20} archivos más."
