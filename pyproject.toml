@@ -21,7 +21,8 @@ classifiers = [
 dependencies = [
     "python-telegram-bot>=20.0",
     "python-dotenv>=1.0.0",
-    "py7zr>=0.20.0",  # Alternativa a p7zip-full
+    "py7zr>=0.20.0", # Alternativa a p7zip-full
+    "requests",
 ]
 
 [project.optional-dependencies]

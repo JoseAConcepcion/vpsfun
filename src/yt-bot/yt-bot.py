@@ -2,8 +2,9 @@ import os
 import logging
 import subprocess
 import requests
+from telegram.ext import Application
 from telegram import Update, InputFile
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+from telegram.ext import Updater, CommandHandler, MessageHandler, filters, CallbackContext
 
 # Configuración
 TOKEN = os.getenv("YT_TELEGRAM_BOT") 
@@ -340,8 +341,49 @@ def server_status(update: Update, context: CallbackContext) -> None:
     
     except Exception as e:
         update.message.reply_text(f'❌ Error al obtener estado: {str(e)}')
+        
+async def handle_cookies(update: Update, context: CallbackContext) -> None:
+    """Guarda el archivo de cookies enviado por el usuario."""
+    if not is_authorized(update.effective_user.id):
+        await update.message.reply_text('No autorizado.')
+        return
+    
+    if not update.message.document:
+        await update.message.reply_text('Por favor envía un archivo cookies.txt')
+        return
+    
+    if not update.message.document.file_name.endswith('.txt'):
+        await update.message.reply_text('El archivo debe ser un .txt')
+        return
+    
+    try:
+        ensure_temp_dir()
+        cookies_file = await update.message.document.get_file()
+        cookies_path = os.path.join(TEMP_DIR, 'cookies.txt')
+        await cookies_file.download_to_drive(cookies_path)
+        await update.message.reply_text('🍪 Archivo de cookies actualizado correctamente!')
+    except Exception as e:
+        await update.message.reply_text(f'❌ Error al guardar cookies: {str(e)}')
+        logger.error(f"Error al guardar cookies: {e}")
 
 def main() -> None:
+    """Inicia el bot usando la nueva API de python-telegram-bot v20+"""
+    # Crea la aplicación con tu token
+    application = Application.builder().token(TOKEN).build()
+
+    # Añade los handlers
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("download", download_video))
+    application.add_handler(CommandHandler("upload", upload_file))
+    application.add_handler(CommandHandler("list", list_files))
+    application.add_handler(CommandHandler("clean", clean_temp))
+    application.add_handler(CommandHandler("status", server_status))
+    application.add_handler(MessageHandler(filters.document, handle_cookies))
+
+    # Inicia el bot
+    ensure_temp_dir()
+    logger.info("Bot iniciado y listo para recibir comandos")
+    application.run_polling()
     """Inicia el bot."""
     updater = Updater(TOKEN)
     dispatcher = updater.dispatcher
