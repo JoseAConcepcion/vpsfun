@@ -378,7 +378,7 @@ def main() -> None:
     application.add_handler(CommandHandler("list", list_files))
     application.add_handler(CommandHandler("clean", clean_temp))
     application.add_handler(CommandHandler("status", server_status))
-    application.add_handler(MessageHandler(filters.document, handle_cookies))
+    application.add_handler(MessageHandler(filters.Document, handle_cookies))
 
     # Inicia el bot
     ensure_temp_dir()
