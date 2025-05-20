@@ -406,43 +406,25 @@ async def send_startup_message(application):
         except Exception as e:
             logger.error(f"No se pudo enviar mensaje de inicio a {user_id}: {e}")
 
+async def run():
+    application = ApplicationBuilder().token(TOKEN).build()
 
-def main():
-    """Punto de entrada para iniciar el bot."""
-    if not TOKEN:
-        print("❌ TOKEN no definido en variables de entorno.")
-        return
-
-    application = Application.builder().token(TOKEN).build()
-
-    # Registro de comandos
+    # Aquí agregas tus handlers habituales
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("download", download_video))
-    application.add_handler(CommandHandler("upload", upload_file))
+    application.add_handler(CommandHandler("download", download))
+    application.add_handler(CommandHandler("upload", upload))
     application.add_handler(CommandHandler("list", list_files))
     application.add_handler(CommandHandler("clean", clean_temp))
-    application.add_handler(CommandHandler("status", server_status))
+    application.add_handler(CommandHandler("status", status))
 
-    # Manejo de errores global
-    async def error_handler(update, context):
-        logger.error(msg="Exception mientras se manejaba una actualización:", exc_info=context.error)
-        if update and hasattr(update, "message") and update.message:
-            await update.message.reply_text('❌ Ocurrió un error inesperado.')
-
-    application.add_error_handler(error_handler)
-
-    # Ejecutar el bot
-    async def run():
-        await application.initialize()
-        await application.start()
-        await send_startup_message(application)
-        await application.updater.start_polling()
-        await application.updater.idle()
-
-import asyncio
-asyncio.run(run())
-
+    # Inicia bot y envía mensaje de inicio
+    await application.initialize()
+    await application.start()
+    await send_startup_message(application)
+    await application.updater.start_polling()
+    await application.updater.idle()
 
 if __name__ == "__main__":
-    main()
+    import asyncio
+    asyncio.run(run())
