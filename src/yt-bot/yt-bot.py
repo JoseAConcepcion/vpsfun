@@ -366,41 +366,83 @@ async def handle_cookies(update: Update, context: CallbackContext) -> None:
         await update.message.reply_text(f'❌ Error al guardar cookies: {str(e)}')
         logger.error(f"Error al guardar cookies: {e}")
 
-def main() -> None:
-    """Inicia el bot usando la nueva API de python-telegram-bot v20+"""
-    # Crea la aplicación con tu token
+def help_command(update: Update, context: CallbackContext) -> None:
+    """Muestra los comandos disponibles."""
+    if not is_authorized(update.effective_user.id):
+        update.message.reply_text('No autorizado.')
+        return
+
+    update.message.reply_text(
+        '📖 *Comandos disponibles:*\n\n'
+        '/start - Mostrar mensaje de bienvenida\n'
+        '/help - Mostrar esta ayuda\n'
+        '/download <url> - Descargar video de YouTube\n'
+        '/upload <file_path> - Subir archivo\n'
+        '/list [path] - Listar archivos\n'
+        '/clean - Limpiar archivos temporales\n'
+        '/status - Ver estado del servidor',
+        parse_mode='Markdown'
+    )
+
+async def send_startup_message(application):
+    """Envía un mensaje de inicio al usuario autorizado."""
+    for user_id in AUTHORIZED_USERS:
+        try:
+            await application.bot.send_message(
+                chat_id=user_id,
+                text=(
+                    "✅ *Bot iniciado correctamente.*\n\n"
+                    "📖 *Comandos disponibles:*\n\n"
+                    "/start - Mostrar mensaje de bienvenida\n"
+                    "/help - Mostrar esta ayuda\n"
+                    "/download <url> - Descargar video de YouTube\n"
+                    "/upload <file_path> - Subir archivo\n"
+                    "/list [path] - Listar archivos\n"
+                    "/clean - Limpiar archivos temporales\n"
+                    "/status - Ver estado del servidor"
+                ),
+                parse_mode='Markdown'
+            )
+        except Exception as e:
+            logger.error(f"No se pudo enviar mensaje de inicio a {user_id}: {e}")
+
+
+def main():
+    """Punto de entrada para iniciar el bot."""
+    if not TOKEN:
+        print("❌ TOKEN no definido en variables de entorno.")
+        return
+
     application = Application.builder().token(TOKEN).build()
 
-    # Añade los handlers
+    # Registro de comandos
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("download", download_video))
     application.add_handler(CommandHandler("upload", upload_file))
     application.add_handler(CommandHandler("list", list_files))
     application.add_handler(CommandHandler("clean", clean_temp))
     application.add_handler(CommandHandler("status", server_status))
-    application.add_handler(MessageHandler(filters.Document, handle_cookies))
 
-    # Inicia el bot
-    ensure_temp_dir()
-    logger.info("Bot iniciado y listo para recibir comandos")
-    application.run_polling()
-    """Inicia el bot."""
-    updater = Updater(TOKEN)
-    dispatcher = updater.dispatcher
+    # Manejo de errores global
+    async def error_handler(update, context):
+        logger.error(msg="Exception mientras se manejaba una actualización:", exc_info=context.error)
+        if update and hasattr(update, "message") and update.message:
+            await update.message.reply_text('❌ Ocurrió un error inesperado.')
 
-    # Manejadores de comandos
-    dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("download", download_video))
-    dispatcher.add_handler(CommandHandler("upload", upload_file))
-    dispatcher.add_handler(CommandHandler("list", list_files))
-    dispatcher.add_handler(CommandHandler("clean", clean_temp))
-    dispatcher.add_handler(CommandHandler("status", server_status))
+    application.add_error_handler(error_handler)
 
-    # Iniciar el bot
-    ensure_temp_dir()
-    updater.start_polling()
-    logger.info("Bot iniciado y listo para recibir comandos")
-    updater.idle()
+    # Ejecutar el bot
+    async def run():
+        await application.initialize()
+        await application.start()
+        await send_startup_message(application)
+        await application.updater.start_polling()
+        await application.updater.idle()
 
-if __name__ == '__main__':
+import asyncio
+asyncio.run(run())
+
+
+if __name__ == "__main__":
     main()
