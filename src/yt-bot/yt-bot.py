@@ -8,7 +8,7 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, filters, Callb
 
 # Configuración
 TOKEN = os.getenv("YT_TELEGRAM_BOT") 
-AUTHORIZED_USERS = os.getenv("MY_TELEGRAM_ID")
+AUTHORIZED_USERS = int(os.getenv("MY_TELEGRAM_ID"))
 MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024  # 2GB (límite de Telegram)
 PART_SIZE = 1.9 * 1024 * 1024 * 1024  # 1.9GB (para dejar margen)
 TEMP_DIR = "temp_downloads"
