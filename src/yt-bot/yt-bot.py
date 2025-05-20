@@ -2,10 +2,16 @@ import os
 import logging
 import subprocess
 import requests
-from telegram.ext import Application
-from telegram.ext import ApplicationBuilder
+import asyncio
 from telegram import Update, InputFile
-from telegram.ext import Updater, CommandHandler, MessageHandler, filters, CallbackContext
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    filters,
+    CallbackContext,
+    ContextTypes
+)
 
 # Configuración
 TOKEN = os.getenv("YT_TELEGRAM_BOT") 
@@ -385,47 +391,56 @@ def help_command(update: Update, context: CallbackContext) -> None:
         parse_mode='Markdown'
     )
 
-async def send_startup_message(application):
-    """Envía un mensaje de inicio al usuario autorizado."""
+async def send_startup_message(context: ContextTypes.DEFAULT_TYPE):
+    """Envía mensaje de inicio usando el contexto correcto."""
     for user_id in AUTHORIZED_USERS:
         try:
-            await application.bot.send_message(
+            await context.bot.send_message(
                 chat_id=user_id,
                 text=(
-                    "✅ *Bot iniciado correctamente.*\n\n"
+                    "✅ *Bot iniciado correctamente*\\.\n\n"
                     "📖 *Comandos disponibles:*\n\n"
-                    "/start - Mostrar mensaje de bienvenida\n"
-                    "/help - Mostrar esta ayuda\n"
-                    "/download <url> - Descargar video de YouTube\n"
-                    "/upload <file_path> - Subir archivo\n"
-                    "/list [path] - Listar archivos\n"
-                    "/clean - Limpiar archivos temporales\n"
-                    "/status - Ver estado del servidor"
+                    "/start \\- Mostrar mensaje de bienvenida\n"
+                    "/help \\- Mostrar ayuda\n"
+                    "/download <url> \\- Descargar video de YouTube\n"
+                    "/upload <file\\_path> \\- Subir archivo\n"
+                    "/list \\[path\\] \\- Listar archivos\n"
+                    "/clean \\- Limpiar temporales\n"
+                    "/status \\- Estado del servidor"
                 ),
-                parse_mode='Markdown'
+                parse_mode='MarkdownV2'
             )
         except Exception as e:
-            logger.error(f"No se pudo enviar mensaje de inicio a {user_id}: {e}")
+            logger.error(f"Error enviando mensaje a {user_id}: {e}")
 
-async def run():
-    application = ApplicationBuilder().token(TOKEN).build()
-
-    # Aquí agregas tus handlers habituales
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("download", download_video))
-    application.add_handler(CommandHandler("upload", upload_file))
-    application.add_handler(CommandHandler("list", list_files))
-    application.add_handler(CommandHandler("clean", clean_temp))
-    # application.add_handler(CommandHandler("status", status))
-
-    # Inicia bot y envía mensaje de inicio
-    await application.initialize()
-    await application.start()
+async def post_init(application):
+    """Tareas posteriores a la inicialización."""
     await send_startup_message(application)
-    await application.updater.start_polling()
-    await application.updater.idle()
+
+def main():
+    """Configuración principal del bot."""
+    application = ApplicationBuilder() \
+        .token(TOKEN) \
+        .post_init(post_init) \
+        .build()
+
+    # Handlers
+    handlers = [
+        CommandHandler("start", start),
+        CommandHandler("help", help_command),
+        CommandHandler("download", download_video),
+        CommandHandler("upload", upload_file),
+        CommandHandler("list", list_files),
+        CommandHandler("clean", clean_temp),
+        CommandHandler("status", server_status),
+        MessageHandler(filters.Document.ALL, handle_cookies)
+    ]
+
+    for handler in handlers:
+        application.add_handler(handler)
+
+    # Ejecutar el bot
+    application.run_polling()
 
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(run())
+    main()
