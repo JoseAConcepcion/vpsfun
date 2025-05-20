@@ -350,28 +350,45 @@ def server_status(update: Update, context: CallbackContext) -> None:
         update.message.reply_text(f'❌ Error al obtener estado: {str(e)}')
         
 async def handle_cookies(update: Update, context: CallbackContext) -> None:
-    """Guarda el archivo de cookies enviado por el usuario."""
+    """Maneja la subida y validación de cookies."""
     if not is_authorized(update.effective_user.id):
-        await update.message.reply_text('No autorizado.')
+        await update.message.reply_text('⚠️ No autorizado.')
         return
     
     if not update.message.document:
-        await update.message.reply_text('Por favor envía un archivo cookies.txt')
+        await update.message.reply_text('ℹ️ Envía el archivo cookies.txt como documento.')
         return
     
-    if not update.message.document.file_name.endswith('.txt'):
-        await update.message.reply_text('El archivo debe ser un .txt')
-        return
+    doc = update.message.document
+    cookies_path = os.path.join(TEMP_DIR, 'cookies.txt')
     
     try:
-        ensure_temp_dir()
-        cookies_file = await update.message.document.get_file()
-        cookies_path = os.path.join(TEMP_DIR, 'cookies.txt')
-        await cookies_file.download_to_drive(cookies_path)
-        await update.message.reply_text('🍪 Archivo de cookies actualizado correctamente!')
+        # Validaciones del archivo
+        if not doc.file_name.lower().endswith('.txt'):
+            await update.message.reply_text('❌ El archivo debe ser .txt')
+            return
+            
+        if doc.file_size > 10 * 1024:  # 10KB máximo
+            await update.message.reply_text('❌ Archivo demasiado grande (máx 10KB)')
+            return
+        
+        # Descargar y validar cookies
+        await (await doc.get_file()).download_to_drive(cookies_path)
+        
+        with open(cookies_path, 'r') as f:
+            cookies_content = f.read()
+            if 'youtube.com' not in cookies_content:
+                os.remove(cookies_path)
+                await update.message.reply_text('❌ Cookies inválidas: No contienen datos de YouTube')
+                return
+                
+        await update.message.reply_text('✅ Cookies actualizadas correctamente!')
+        logger.info(f"Cookies actualizadas por {update.effective_user.id}")
+        
     except Exception as e:
-        await update.message.reply_text(f'❌ Error al guardar cookies: {str(e)}')
-        logger.error(f"Error al guardar cookies: {e}")
+        await update.message.reply_text(f'❌ Error: {str(e)}')
+        if os.path.exists(cookies_path):
+            os.remove(cookies_path)
 
 def help_command(update: Update, context: CallbackContext) -> None:
     """Muestra los comandos disponibles."""
