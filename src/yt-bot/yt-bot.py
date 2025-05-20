@@ -3,6 +3,7 @@ import logging
 import subprocess
 import requests
 from telegram.ext import Application
+from telegram.ext import ApplicationBuilder
 from telegram import Update, InputFile
 from telegram.ext import Updater, CommandHandler, MessageHandler, filters, CallbackContext
 
