@@ -156,107 +156,78 @@ def split_large_file(file_path):
         logger.error(f"Error al dividir {file_path}: {e}")
         raise
 
-def upload_large_file(update: Update, file_path: str, caption: str = ""):
-    """Sube archivos grandes usando la API de Telegram con multipart/form-data"""
-    bot = update.message.bot
-    file_size = os.path.getsize(file_path)
-    filename = os.path.basename(file_path)
-    
+async def upload_large_file(update: Update, context: CallbackContext, file_path: str, caption: str = "") -> bool:
+    """Sube archivos grandes usando el bot del contexto."""
     try:
-        if file_size > 50 * 1024 * 1024:  # Si es mayor a 50MB
-            update.message.reply_text(f"⚡ Preparando subida de archivo grande ({file_size/1024/1024:.2f} MB)...")
-            
-            # Configurar la URL de la API
-            api_url = f"https://api.telegram.org/bot{TOKEN}/sendDocument"
-            
-            # Leer el archivo en chunks
+        file_size = os.path.getsize(file_path)
+        filename = os.path.basename(file_path)
+        
+        async with context.bot:
             with open(file_path, 'rb') as file:
-                files = {'document': (filename, file)}
-                data = {'chat_id': update.message.chat_id, 'caption': caption}
-                
-                response = requests.post(
-                    api_url,
-                    files=files,
-                    data=data,
-                    timeout=UPLOAD_TIMEOUT,
-                    headers={'Connection': 'keep-alive'}
+                await context.bot.send_chat_action(
+                    chat_id=update.effective_chat.id, 
+                    action=ChatAction.UPLOAD_DOCUMENT
                 )
                 
-                if response.status_code != 200:
-                    error_msg = response.json().get('description', 'Error desconocido')
-                    raise Exception(f"API Error: {error_msg}")
+                await update.message.reply_text(f"⚡ Subiendo {filename}...")
                 
-                return True
-        else:
-            # Para archivos pequeños usar el método normal
-            with open(file_path, 'rb') as file:
-                bot.send_document(
-                    chat_id=update.message.chat_id,
+                await context.bot.send_document(
+                    chat_id=update.effective_chat.id,
                     document=InputFile(file, filename=filename),
                     caption=caption,
                     read_timeout=UPLOAD_TIMEOUT,
                     write_timeout=UPLOAD_TIMEOUT,
                     connect_timeout=UPLOAD_TIMEOUT
                 )
-            return True
-    
+        return True
+        
     except Exception as e:
-        logger.error(f"Error en upload_large_file: {e}")
+        logger.error(f"Error subiendo {filename}: {e}")
         raise
 
-def upload_file(update: Update, context: CallbackContext) -> None:
-    """Sube un archivo, dividiéndolo si es necesario."""
+async def upload_file(update: Update, context: CallbackContext) -> None:
+    """Maneja la subida de archivos con gestión asíncrona completa."""
     if not is_authorized(update.effective_user.id):
-        update.message.reply_text('No autorizado.')
+        await update.message.reply_text('No autorizado.')
         return
     
     if not context.args:
-        update.message.reply_text('Por favor especifica un archivo. Ejemplo: /upload /ruta/al/archivo.mkv')
+        await update.message.reply_text('Ejemplo: /upload /ruta/al/archivo.mkv')
         return
     
     file_path = ' '.join(context.args)
     
     if not os.path.exists(file_path):
-        update.message.reply_text(f'❌ El archivo {file_path} no existe.')
+        await update.message.reply_text(f'❌ Archivo no encontrado: {file_path}')
         return
-    
-    file_size = os.path.getsize(file_path)
-    filename = os.path.basename(file_path)
-    
+
     try:
+        file_size = os.path.getsize(file_path)
+        filename = os.path.basename(file_path)
+        
         if file_size > MAX_FILE_SIZE:
-            # Archivo demasiado grande, necesitamos dividirlo
-            update.message.reply_text(
-                f'📦 El archivo es muy grande ({file_size/1024/1024:.2f} MB). '
-                'Dividiendo en partes...'
-            )
-            
+            await update.message.reply_text(f'✂️ Dividiendo archivo de {file_size/1024/1024:.2f} MB...')
             parts = split_large_file(file_path)
-            total_parts = len(parts)
             
-            update.message.reply_text(
-                f'✂️ Dividido en {total_parts} partes. Comenzando subida...'
-            )
+            await update.message.reply_text(f'📦 {len(parts)} partes creadas. Iniciando subida...')
             
             for i, part in enumerate(parts, 1):
                 try:
-                    upload_large_file(update, part, f'Parte {i}/{total_parts} de {filename}')
-                    update.message.reply_text(f'✅ Parte {i}/{total_parts} subida correctamente.')
+                    await upload_large_file(update, context, part, f'Parte {i}/{len(parts)} de {filename}')
+                    await update.message.reply_text(f'✅ Parte {i} subida')
                 except Exception as e:
-                    update.message.reply_text(f'❌ Error al subir parte {i}: {str(e)}')
+                    await update.message.reply_text(f'❌ Error en parte {i}: {str(e)}')
                     raise
+                    
+            await update.message.reply_text('🎉 Todas las partes subidas exitosamente!')
             
-            update.message.reply_text('🎉 Todas las partes subidas correctamente.')
         else:
-            # Subir archivo normal
-            upload_large_file(update, file_path, f'Archivo completo: {filename}')
-            update.message.reply_text('✅ Archivo subido correctamente.')
-        
-        logger.info(f"Archivo {filename} subido por {update.effective_user.id}")
-    
+            await upload_large_file(update, context, file_path, f'Archivo completo: {filename}')
+            await update.message.reply_text('✅ Subida completada')
+            
     except Exception as e:
-        update.message.reply_text(f'❌ Error al subir el archivo: {str(e)}')
-        logger.error(f"Error al subir {filename}: {e}")
+        await update.message.reply_text(f'❌ Error crítico: {str(e)}')
+        logger.error(f"Error en upload_file: {e}", exc_info=True)
 
 def list_files(update: Update, context: CallbackContext) -> None:
     """Lista los archivos disponibles."""
