@@ -85,7 +85,7 @@ async def download_video(update: Update, context: CallbackContext) -> None:
         ]
         
         # Añadir cookies si existen
-        cookies_path = os.path.join(TEMP_DIR, '.txt')
+        cookies_path = os.path.join(TEMP_DIR, 'cookies.txt')
         if os.path.exists(cookies_path):
             cmd[1:1] = [  # Insertar después del comando principal
                 '--cookies', cookies_path,
