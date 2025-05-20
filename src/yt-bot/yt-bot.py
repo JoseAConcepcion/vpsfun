@@ -3,7 +3,7 @@ import logging
 import subprocess
 import requests
 import asyncio
-from telegram import Update, InputFile
+from telegram import Update, InputFile, ChatAction
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -156,78 +156,6 @@ def split_large_file(file_path):
         logger.error(f"Error al dividir {file_path}: {e}")
         raise
 
-async def upload_large_file(update: Update, context: CallbackContext, file_path: str, caption: str = "") -> bool:
-    """Sube archivos grandes usando el bot del contexto."""
-    try:
-        file_size = os.path.getsize(file_path)
-        filename = os.path.basename(file_path)
-        
-        async with context.bot:
-            with open(file_path, 'rb') as file:
-                await context.bot.send_chat_action(
-                    chat_id=update.effective_chat.id, 
-                    action=ChatAction.UPLOAD_DOCUMENT
-                )
-                
-                await update.message.reply_text(f"⚡ Subiendo {filename}...")
-                
-                await context.bot.send_document(
-                    chat_id=update.effective_chat.id,
-                    document=InputFile(file, filename=filename),
-                    caption=caption,
-                    read_timeout=UPLOAD_TIMEOUT,
-                    write_timeout=UPLOAD_TIMEOUT,
-                    connect_timeout=UPLOAD_TIMEOUT
-                )
-        return True
-        
-    except Exception as e:
-        logger.error(f"Error subiendo {filename}: {e}")
-        raise
-
-async def upload_file(update: Update, context: CallbackContext) -> None:
-    """Maneja la subida de archivos con gestión asíncrona completa."""
-    if not is_authorized(update.effective_user.id):
-        await update.message.reply_text('No autorizado.')
-        return
-    
-    if not context.args:
-        await update.message.reply_text('Ejemplo: /upload /ruta/al/archivo.mkv')
-        return
-    
-    file_path = ' '.join(context.args)
-    
-    if not os.path.exists(file_path):
-        await update.message.reply_text(f'❌ Archivo no encontrado: {file_path}')
-        return
-
-    try:
-        file_size = os.path.getsize(file_path)
-        filename = os.path.basename(file_path)
-        
-        if file_size > MAX_FILE_SIZE:
-            await update.message.reply_text(f'✂️ Dividiendo archivo de {file_size/1024/1024:.2f} MB...')
-            parts = split_large_file(file_path)
-            
-            await update.message.reply_text(f'📦 {len(parts)} partes creadas. Iniciando subida...')
-            
-            for i, part in enumerate(parts, 1):
-                try:
-                    await upload_large_file(update, context, part, f'Parte {i}/{len(parts)} de {filename}')
-                    await update.message.reply_text(f'✅ Parte {i} subida')
-                except Exception as e:
-                    await update.message.reply_text(f'❌ Error en parte {i}: {str(e)}')
-                    raise
-                    
-            await update.message.reply_text('🎉 Todas las partes subidas exitosamente!')
-            
-        else:
-            await upload_large_file(update, context, file_path, f'Archivo completo: {filename}')
-            await update.message.reply_text('✅ Subida completada')
-            
-    except Exception as e:
-        await update.message.reply_text(f'❌ Error crítico: {str(e)}')
-        logger.error(f"Error en upload_file: {e}", exc_info=True)
 
 def list_files(update: Update, context: CallbackContext) -> None:
     """Lista los archivos disponibles."""
@@ -422,30 +350,107 @@ async def post_init(application):
     """Tareas posteriores a la inicialización."""
     await send_startup_message(application)
 
+async def upload_large_file(update: Update, context: CallbackContext, file_path: str, caption: str = "") -> bool:
+    """Sube archivos grandes usando el bot del contexto."""
+    try:
+        file_size = os.path.getsize(file_path)
+        filename = os.path.basename(file_path)
+        
+        await context.bot.send_chat_action(
+            chat_id=update.effective_chat.id, 
+            action=ChatAction.UPLOAD_DOCUMENT
+        )
+        
+        await update.message.reply_text(f"⚡ Subiendo {filename}...")
+        
+        with open(file_path, 'rb') as file:
+            await context.bot.send_document(
+                chat_id=update.effective_chat.id,
+                document=InputFile(file, filename=filename),
+                caption=caption,
+                read_timeout=UPLOAD_TIMEOUT,
+                write_timeout=UPLOAD_TIMEOUT,
+                connect_timeout=UPLOAD_TIMEOUT
+            )
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error subiendo {filename}: {e}")
+        raise
+
+async def upload_file(update: Update, context: CallbackContext) -> None:
+    """Maneja la subida de archivos con gestión asíncrona completa."""
+    try:
+        if not is_authorized(update.effective_user.id):
+            await update.message.reply_text('No autorizado.')
+            return
+        
+        if not context.args:
+            await update.message.reply_text('Ejemplo: /upload /ruta/al/archivo.mkv')
+            return
+        
+        file_path = ' '.join(context.args)
+        
+        if not os.path.exists(file_path):
+            await update.message.reply_text(f'❌ Archivo no encontrado: {file_path}')
+            return
+
+        file_size = os.path.getsize(file_path)
+        filename = os.path.basename(file_path)
+        
+        if file_size > MAX_FILE_SIZE:
+            await update.message.reply_text(f'✂️ Dividiendo archivo de {file_size/1024/1024:.2f} MB...')
+            parts = split_large_file(file_path)
+            
+            await update.message.reply_text(f'📦 {len(parts)} partes creadas. Iniciando subida...')
+            
+            for i, part in enumerate(parts, 1):
+                try:
+                    await upload_large_file(update, context, part, f'Parte {i}/{len(parts)} de {filename}')
+                    await update.message.reply_text(f'✅ Parte {i} subida')
+                except Exception as e:
+                    await update.message.reply_text(f'❌ Error en parte {i}: {str(e)}')
+                    raise
+                    
+            await update.message.reply_text('🎉 Todas las partes subidas exitosamente!')
+            
+        else:
+            await upload_large_file(update, context, file_path, f'Archivo completo: {filename}')
+            await update.message.reply_text('✅ Subida completada')
+            
+    except Exception as e:
+        await update.message.reply_text(f'❌ Error crítico: {str(e)}')
+        logger.error(f"Error en upload_file: {e}", exc_info=True)
+
 def main():
     """Configuración principal del bot."""
     application = ApplicationBuilder() \
         .token(TOKEN) \
+        .http_version('1.1') \
+        .get_updates_http_version('1.1') \
         .post_init(post_init) \
         .build()
 
     # Handlers
     handlers = [
-        CommandHandler("start", start),
-        CommandHandler("help", help_command),
-        CommandHandler("download", download_video),
-        CommandHandler("upload", upload_file),
-        CommandHandler("list", list_files),
-        CommandHandler("clean", clean_temp),
-        CommandHandler("status", server_status),
-        MessageHandler(filters.Document.ALL, handle_cookies)
+        CommandHandler("upload", upload_file)
     ]
 
+    # Manejo de errores global
+    application.add_error_handler(error_handler)
+    
     for handler in handlers:
         application.add_handler(handler)
 
     # Ejecutar el bot
     application.run_polling()
+
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Maneja errores no capturados."""
+    logger.error("Excepción no capturada:", exc_info=context.error)
+    
+    if isinstance(update, Update):
+        await update.message.reply_text(f'⚠️ Error interno: {context.error}')
 
 if __name__ == "__main__":
     main()
