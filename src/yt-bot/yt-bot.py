@@ -413,7 +413,7 @@ async def run():
     # Aquí agregas tus handlers habituales
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("download", download))
+    application.add_handler(CommandHandler("download", download_video))
     application.add_handler(CommandHandler("upload", upload))
     application.add_handler(CommandHandler("list", list_files))
     application.add_handler(CommandHandler("clean", clean_temp))
