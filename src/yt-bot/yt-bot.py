@@ -85,7 +85,7 @@ async def download_video(update: Update, context: CallbackContext) -> None:
         ]
         
         # Añadir cookies si existen
-        cookies_path = os.path.join(TEMP_DIR, 'cookies.txt')
+        cookies_path = os.path.join(TEMP_DIR, '.txt')
         if os.path.exists(cookies_path):
             cmd[1:1] = [  # Insertar después del comando principal
                 '--cookies', cookies_path,
@@ -108,7 +108,7 @@ async def download_video(update: Update, context: CallbackContext) -> None:
             raise Exception(f'Error en yt-dlp: {stderr.decode()}')
         
         # Encontrar el archivo descargado
-        downloaded_files = [f for f in os.listdir(TEMP_DIR) if f.endswith('.mkv')]
+        downloaded_files = [f for f in os.listdir(TEMP_DIR) if f.endswith('.mp4')]
         if not downloaded_files:
             raise Exception('No se pudo encontrar el archivo descargado.')
         
