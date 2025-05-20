@@ -414,10 +414,10 @@ async def run():
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("download", download_video))
-    application.add_handler(CommandHandler("upload", upload))
+    application.add_handler(CommandHandler("upload", upload_files))
     application.add_handler(CommandHandler("list", list_files))
     application.add_handler(CommandHandler("clean", clean_temp))
-    application.add_handler(CommandHandler("status", status))
+    # application.add_handler(CommandHandler("status", status))
 
     # Inicia bot y envía mensaje de inicio
     await application.initialize()
