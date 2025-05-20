@@ -54,49 +54,23 @@ def start(update: Update, context: CallbackContext) -> None:
         '/status - Ver estado del servidor'
     )
 
-def download_video(update: Update, context: CallbackContext) -> None:
+async def download_video(update: Update, context: CallbackContext) -> None:
     """Descarga un video de YouTube usando yt-dlp."""
-    try:
-        cookies_path = os.path.join(TEMP_DIR, 'cookies.txt')
-        cmd = [
-            'yt-dlp',
-            '-o', f'{TEMP_DIR}/%(title)s.%(ext)s',
-            '--merge-output-format', 'mkv',
-            '--no-playlist',
-            '--limit-rate', '50M',
-            '--socket-timeout', '30',
-            '--retries', '10',
-            '--fragment-retries', '10',
-            '--extractor-retries', '5',
-        ]
-        
-        # Añadir cookies si existen
-        if os.path.exists(cookies_path):
-            cmd.extend([
-                '--cookies', cookies_path,
-                '--force-ipv4',
-                '--mark-watched'
-            ])
-            logger.info("Usando cookies para la descarga")
-        else:
-            await update.message.reply_text('⚠️ Descargando sin cookies - Algunos videos pueden requerir autenticación')
-        
-        cmd.append(url)
     if not is_authorized(update.effective_user.id):
-        update.message.reply_text('No autorizado.')
+        await update.message.reply_text('No autorizado.')
         return
     
     if not context.args:
-        update.message.reply_text('Por favor proporciona una URL. Ejemplo: /download https://youtu.be/ejemplo')
+        await update.message.reply_text('Por favor proporciona una URL. Ejemplo: /download https://youtu.be/ejemplo')
         return
     
     url = ' '.join(context.args)
     ensure_temp_dir()
     
     try:
-        update.message.reply_text(f'⏬ Descargando video de {url}...')
+        await update.message.reply_text(f'⏬ Descargando video de {url}...')
         
-        # Configuración de yt-dlp para archivos grandes
+        # Configuración base de yt-dlp
         cmd = [
             'yt-dlp',
             '-o', f'{TEMP_DIR}/%(title)s.%(ext)s',
@@ -110,8 +84,25 @@ def download_video(update: Update, context: CallbackContext) -> None:
             url
         ]
         
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = process.communicate()
+        # Añadir cookies si existen
+        cookies_path = os.path.join(TEMP_DIR, 'cookies.txt')
+        if os.path.exists(cookies_path):
+            cmd[1:1] = [  # Insertar después del comando principal
+                '--cookies', cookies_path,
+                '--force-ipv4',
+                '--mark-watched'
+            ]
+            logger.info("Usando cookies para la descarga")
+        else:
+            await update.message.reply_text('⚠️ Descargando sin cookies - Algunos videos pueden requerir autenticación')
+        
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        stdout, stderr = await process.communicate()
         
         if process.returncode != 0:
             raise Exception(f'Error en yt-dlp: {stderr.decode()}')
@@ -126,14 +117,14 @@ def download_video(update: Update, context: CallbackContext) -> None:
             key=os.path.getctime
         )
         
-        update.message.reply_text(
+        await update.message.reply_text(
             f'✅ Descarga completada: {os.path.basename(filename)}\n'
             f'📏 Tamaño: {os.path.getsize(filename)/1024/1024:.2f} MB\n'
             f'Usa /upload {filename} para subirlo.'
         )
         
     except Exception as e:
-        update.message.reply_text(f'❌ Error al descargar: {str(e)}')
+        await update.message.reply_text(f'❌ Error al descargar: {str(e)}')
         logger.error(f"Error al descargar {url}: {e}")
 
 def split_large_file(file_path):
