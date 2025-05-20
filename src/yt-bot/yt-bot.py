@@ -57,31 +57,31 @@ def start(update: Update, context: CallbackContext) -> None:
 def download_video(update: Update, context: CallbackContext) -> None:
     """Descarga un video de YouTube usando yt-dlp."""
     try:
-    cookies_path = os.path.join(TEMP_DIR, 'cookies.txt')
-    cmd = [
-        'yt-dlp',
-        '-o', f'{TEMP_DIR}/%(title)s.%(ext)s',
-        '--merge-output-format', 'mkv',
-        '--no-playlist',
-        '--limit-rate', '50M',
-        '--socket-timeout', '30',
-        '--retries', '10',
-        '--fragment-retries', '10',
-        '--extractor-retries', '5',
-    ]
-    
-    # Añadir cookies si existen
-    if os.path.exists(cookies_path):
-        cmd.extend([
-            '--cookies', cookies_path,
-            '--force-ipv4',
-            '--mark-watched'
-        ])
-        logger.info("Usando cookies para la descarga")
-    else:
-        await update.message.reply_text('⚠️ Descargando sin cookies - Algunos videos pueden requerir autenticación')
-    
-    cmd.append(url)
+        cookies_path = os.path.join(TEMP_DIR, 'cookies.txt')
+        cmd = [
+            'yt-dlp',
+            '-o', f'{TEMP_DIR}/%(title)s.%(ext)s',
+            '--merge-output-format', 'mkv',
+            '--no-playlist',
+            '--limit-rate', '50M',
+            '--socket-timeout', '30',
+            '--retries', '10',
+            '--fragment-retries', '10',
+            '--extractor-retries', '5',
+        ]
+        
+        # Añadir cookies si existen
+        if os.path.exists(cookies_path):
+            cmd.extend([
+                '--cookies', cookies_path,
+                '--force-ipv4',
+                '--mark-watched'
+            ])
+            logger.info("Usando cookies para la descarga")
+        else:
+            await update.message.reply_text('⚠️ Descargando sin cookies - Algunos videos pueden requerir autenticación')
+        
+        cmd.append(url)
     if not is_authorized(update.effective_user.id):
         update.message.reply_text('No autorizado.')
         return
